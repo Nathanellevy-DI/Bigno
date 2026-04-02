@@ -26,11 +26,6 @@ export default function BingoCard({ numbers, drawnNumbers, onBingo }: BingoCardP
     const value = numbers[index];
     if (value === 'FREE') return;
 
-    // You can only mark a number if it's been drawn
-    if (!drawnNumbers.includes(value as number) && !marks[index]) {
-      // Could show a toast or shake animation here to indicate invalid click
-      return;
-    }
 
     const newMarks = [...marks];
     newMarks[index] = !newMarks[index];

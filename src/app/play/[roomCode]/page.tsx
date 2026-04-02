@@ -47,23 +47,41 @@ export default function PlayPage({ params }: { params: Promise<{ roomCode: strin
   }, []);
 
   useEffect(() => {
-    // In a real app we'd fetch the existing drawn numbers from Supabase on mount
-    // const fetchState = async () => { ... } 
+    let numSub: any;
 
-    // Listen for new drawn numbers from the host
-    const numSub = supabase
-      .channel('numbers_channel')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'drawn_numbers', filter: `room_id=eq.${code}` }, (payload) => {
-        const newNum = payload.new.number;
-        setDrawnNumbers((prev) => [...prev, newNum]);
-        setLatestNumber(newNum);
-      })
-      .subscribe();
+    const setupGame = async () => {
+      // 1. Fetch Room ID
+      const { data: roomData } = await supabase.from('rooms').select('id').eq('code', code).single();
+      if (!roomData) return;
+      const roomId = roomData.id;
+
+      // 2. Fetch existing drawn numbers
+      const { data: drawnData } = await supabase.from('drawn_numbers').select('number').eq('room_id', roomId).order('drawn_at', { ascending: true });
+      if (drawnData) setDrawnNumbers(drawnData.map(d => d.number));
+
+      // 3. Register Player in DB
+      await supabase.from('players').insert([{ room_id: roomId, nickname, card: cardNumbers }]);
+
+      // 4. Listen for new drawn numbers
+      numSub = supabase
+        .channel('numbers_channel_player')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'drawn_numbers' }, (payload) => {
+          // ensure it matches our room
+          if (payload.new.room_id === roomId) {
+            const newNum = payload.new.number;
+            setDrawnNumbers((prev) => [...prev, newNum]);
+            setLatestNumber(newNum);
+          }
+        })
+        .subscribe();
+    };
+
+    setupGame();
 
     return () => {
-      supabase.removeChannel(numSub);
+      if (numSub) supabase.removeChannel(numSub);
     };
-  }, [code]);
+  }, [code, nickname, cardNumbers]);
 
   // Clear latest number ping after 3 seconds
   useEffect(() => {
@@ -87,10 +105,10 @@ export default function PlayPage({ params }: { params: Promise<{ roomCode: strin
       <AnimatePresence>
         {latestNumber !== null && (
           <motion.div 
-            initial={{ y: -50, opacity: 0 }}
+            initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -50, opacity: 0 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-bingo-red text-white text-3xl font-black py-4 px-12 rounded-full shadow-[0_6px_0_0_#9a3412] flex items-center gap-4 border-4 border-white"
+            exit={{ y: 50, opacity: 0 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-bingo-red text-white text-3xl font-black py-4 px-12 rounded-full shadow-[0_6px_0_0_#9a3412] flex items-center gap-4 border-4 border-white"
           >
             <span>NEW NUMBER:</span>
             <span className="text-5xl">{latestNumber}</span>

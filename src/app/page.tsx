@@ -16,8 +16,14 @@ export default function Home() {
     setLoading(true);
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     
-    // In a real app we'd save this to Supabase, but for preview we'll navigate directly
-    // const { error } = await supabase.from('rooms').insert([{ code, status: 'waiting' }]);
+    // Insert into Supabase
+    const { error } = await supabase.from('rooms').insert([{ code, status: 'waiting' }]);
+    
+    if (error) {
+      alert('Error creating room: ' + error.message);
+      setLoading(false);
+      return;
+    }
     
     router.push(`/host/${code}`);
   };
@@ -27,7 +33,20 @@ export default function Home() {
     if (!nickname || roomCode.length !== 4) return;
     setLoading(true);
     
-    // In a full implementation, we'd add the player to the Supabase game room here
+    // Check if room exists
+    const { data: room, error } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('code', roomCode)
+      .single();
+
+    if (error || !room) {
+      alert('Invalid Room Code / Room does not exist!');
+      setLoading(false);
+      return;
+    }
+    
+    // Add player to the game
     router.push(`/play/${roomCode}?nickname=${encodeURIComponent(nickname)}`);
   };
 

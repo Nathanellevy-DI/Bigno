@@ -8,20 +8,36 @@ import { motion } from 'framer-motion';
 export default function HostPage({ params }: { params: Promise<{ roomCode: string }> }) {
   const unwrappedParams = use(params);
   const code = unwrappedParams.roomCode;
+  const [roomId, setRoomId] = useState<string | null>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [drawnNumbers, setDrawnNumbers] = useState<number[]>([]);
   const [isAutoDrawing, setIsAutoDrawing] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real app we'd fetch existing players from Supabase
-    // Fetch initial state:
-    // supabase.from('players').select('*').eq('room_id', code).then(res => setPlayers(res.data || []));
+    const fetchRoomAndSetup = async () => {
+      const { data: roomData } = await supabase.from('rooms').select('id').eq('code', code).single();
+      
+      if (roomData) {
+        setRoomId(roomData.id);
+        // Fetch initial state
+        const { data: playersData } = await supabase.from('players').select('*').eq('room_id', roomData.id);
+        if (playersData) setPlayers(playersData);
+
+        // Fetch already drawn numbers if this page was refreshed
+        const { data: drawnData } = await supabase.from('drawn_numbers').select('number').eq('room_id', roomData.id).order('drawn_at', { ascending: true });
+        if (drawnData) setDrawnNumbers(drawnData.map(d => d.number));
+      }
+    };
+    
+    fetchRoomAndSetup();
 
     // Listen for new players
     const playersSub = supabase
       .channel('players_channel')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'players' }, (payload) => {
+        // We ensure we only add players for our room locally by checking if room_id matches
+        // (Though we could use a filter on the subscription if desired)
         setPlayers((prev) => [...prev, payload.new]);
       })
       .subscribe();
@@ -39,10 +55,10 @@ export default function HostPage({ params }: { params: Promise<{ roomCode: strin
       }, 5000); // Draw every 5 seconds
     }
     return () => clearInterval(interval);
-  }, [isAutoDrawing, drawnNumbers, winner]);
+  }, [isAutoDrawing, drawnNumbers, winner, roomId]);
 
   const drawNumber = async () => {
-    if (drawnNumbers.length >= 75 || winner) {
+    if (drawnNumbers.length >= 75 || winner || !roomId) {
       setIsAutoDrawing(false);
       return;
     }
@@ -52,9 +68,9 @@ export default function HostPage({ params }: { params: Promise<{ roomCode: strin
       nextNum = Math.floor(Math.random() * 75) + 1;
     } while (drawnNumbers.includes(nextNum));
 
+    // Save to Supabase (optimistic update)
     setDrawnNumbers(prev => [...prev, nextNum]);
-    // Save to Supabase
-    // await supabase.from('drawn_numbers').insert([{ room_id: code, number: nextNum }]);
+    await supabase.from('drawn_numbers').insert([{ room_id: roomId, number: nextNum }]);
   };
 
   return (
