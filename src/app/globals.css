@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fff0f0;
+  --foreground: #450a0a; /* dark red for text */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: #ef4444;
+  --color-primary-focus: #dc2626;
+  --color-bingo-red: #ea580c; /* extra spicy red/orange */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom classes for bubble effects */
+@layer utilities {
+  .bubble-btn {
+    @apply bg-primary text-white font-bold py-3 px-6 rounded-full shadow-[0_4px_0_0_#991b1b] active:shadow-none active:translate-y-1 transition-all;
+  }
+}
