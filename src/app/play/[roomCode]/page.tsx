@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, use } from 'react';
 import { useSearchParams } from 'next/navigation';
 import BingoCard from '@/components/BingoCard';
 import { supabase } from '@/lib/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function PlayPage({ params }: { params: { roomCode: string } }) {
-  const code = params.roomCode;
+export default function PlayPage({ params }: { params: Promise<{ roomCode: string }> }) {
+  const unwrappedParams = use(params);
+  const code = unwrappedParams.roomCode;
   const searchParams = useSearchParams();
   const nickname = searchParams.get('nickname') || 'Player';
   

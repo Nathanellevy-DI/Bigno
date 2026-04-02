@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Play, Square, Users, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function HostPage({ params }: { params: { roomCode: string } }) {
-  const code = params.roomCode;
+export default function HostPage({ params }: { params: Promise<{ roomCode: string }> }) {
+  const unwrappedParams = use(params);
+  const code = unwrappedParams.roomCode;
   const [players, setPlayers] = useState<any[]>([]);
   const [drawnNumbers, setDrawnNumbers] = useState<number[]>([]);
   const [isAutoDrawing, setIsAutoDrawing] = useState(false);
