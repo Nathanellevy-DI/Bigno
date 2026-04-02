@@ -1,18 +1,18 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 
 type BingoCardProps = {
   numbers: (number | 'FREE')[];
   drawnNumbers: number[];
-  onBingo: () => void;
+  onBingoClaim: (marks: boolean[]) => void;
 };
 
-export default function BingoCard({ numbers, drawnNumbers, onBingo }: BingoCardProps) {
+export default function BingoCard({ numbers, drawnNumbers, onBingoClaim }: BingoCardProps) {
   const [marks, setMarks] = useState<boolean[]>(new Array(25).fill(false));
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  // Initialize FREE space to be marked
   useEffect(() => {
     const newMarks = [...marks];
     const freeIndex = numbers.indexOf('FREE');
@@ -26,33 +26,42 @@ export default function BingoCard({ numbers, drawnNumbers, onBingo }: BingoCardP
     const value = numbers[index];
     if (value === 'FREE') return;
 
-
     const newMarks = [...marks];
     newMarks[index] = !newMarks[index];
     setMarks(newMarks);
   };
 
-  const checkBingo = () => {
-    // Basic BINGO logic (rows, cols, diagonals)
-    // 0  1  2  3  4
-    // 5  6  7  8  9
-    // 10 11 12 13 14
-    // 15 16 17 18 19
-    // 20 21 22 23 24
-    const winningLines = [
-      [0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14], [15, 16, 17, 18, 19], [20, 21, 22, 23, 24], // Rows
-      [0, 5, 10, 15, 20], [1, 6, 11, 16, 21], [2, 7, 12, 17, 22], [3, 8, 13, 18, 23], [4, 9, 14, 19, 24], // Cols
-      [0, 6, 12, 18, 24], [4, 8, 12, 16, 20] // Diagonals
-    ];
+  const attemptBingo = () => {
+    setShowConfirm(true);
+  };
 
-    const hasBingo = winningLines.some(line => line.every(index => marks[index]));
-    if (hasBingo) {
-      onBingo();
-    }
+  const confirmBingo = () => {
+    setShowConfirm(false);
+    onBingoClaim(marks);
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto bg-white p-4 sm:p-6 rounded-3xl shadow-xl border-4 border-primary/20">
+    <div className="w-full max-w-lg mx-auto bg-white p-4 sm:p-6 rounded-3xl shadow-xl border-4 border-primary/20 relative overflow-hidden">
+      <AnimatePresence>
+        {showConfirm && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-10 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center"
+          >
+            <h3 className="text-3xl font-black text-foreground mb-4">Are you sure?</h3>
+            <p className="text-gray-600 mb-8 font-medium">Have you really connected five in a row?</p>
+            <div className="flex gap-4 w-full">
+              <button onClick={() => setShowConfirm(false)} className="flex-1 py-4 font-bold text-gray-500 bg-gray-100 rounded-xl hover:bg-gray-200">
+                Cancel
+              </button>
+              <button onClick={confirmBingo} className="flex-1 bubble-btn py-4">
+                YES, BINGO!
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-6">
         {['B', 'I', 'N', 'G', 'O'].map((letter, i) => (
           <div key={i} className="text-center font-extrabold text-3xl sm:text-5xl text-primary pb-2 border-b-4 border-primary/10">
@@ -90,7 +99,7 @@ export default function BingoCard({ numbers, drawnNumbers, onBingo }: BingoCardP
         ))}
       </div>
       <div className="mt-8 flex justify-center">
-        <button onClick={checkBingo} className="bubble-btn text-2xl px-12 py-4 uppercase bg-bingo-red shadow-[0_4px_0_0_#9a3412]">
+        <button onClick={attemptBingo} className="bubble-btn text-2xl px-12 py-4 uppercase bg-bingo-red shadow-[0_4px_0_0_#9a3412]">
           BINGO!
         </button>
       </div>
